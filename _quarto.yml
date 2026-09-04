@@ -1,0 +1,9 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "ICP_ONT Report"
+  navbar: false
+execute:
+  freeze: false

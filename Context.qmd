@@ -50,13 +50,495 @@ library(Biostrings)
 library(ggOceanMaps)
 library(ggspatial)
 
-# Metadata → rownames = barcodeXX
-meta <- read_xlsx("data/Metadata_JC269_UKWC.xlsx")
-
-meta <- meta %>%
-  mutate(
-    Lon = as.numeric(Lon),
-    Lat = as.numeric(Lat)
-  )
+# # Metadata → rownames = barcodeXX
+# meta <- read_xlsx("data/Metadata_JC269_UKWC.xlsx")
+# 
+# meta <- meta %>%
+#   mutate(
+#     Lon = as.numeric(Lon),
+#     Lat = as.numeric(Lat)
+#   )
 
 ```
+
+```{r load_data}
+data_dir <- "data/Illumina"
+markers <- c("16S", "18S", "COI", "ITS", "rbcL")
+
+for (m in markers) {
+  track <- readRDS(file.path(data_dir, paste0(m, "_read-count-tracking.rds")))
+  seqtab <- readRDS(file.path(data_dir, paste0(m, "_seqtab_nochim.rds")))
+  taxa   <- readRDS(file.path(data_dir, paste0(m, "_taxa.rds")))
+
+  assign(paste0("track_", m), track)
+  assign(paste0("seqtab_", m), seqtab)
+  assign(paste0("taxa_", m), taxa)
+}
+```
+
+```{r reads_track_table}
+qc_samples <- map_dfr(markers, function(m) {
+
+  track <- get(paste0("track_", m))
+  seqtab <- get(paste0("seqtab_", m))
+
+  # Check sample matching
+  stopifnot(setequal(rownames(track), rownames(seqtab)))
+
+  # Match tracking rows to ASV table rows
+  track <- track[rownames(seqtab), , drop = FALSE]
+
+  tibble(
+    marker = m,
+    sample = rownames(seqtab),
+    input_reads = track[, "dada2_input"],
+    filtered_reads = track[, "filtered"],
+    merged_reads = track[, "merged"],
+    final_reads = track[, "nonchim"],
+    retention = track[, "final_perc_reads_retained"],
+    n_ASVs = rowSums(seqtab > 0),
+    sample_type = case_when(
+      str_detect(sample, "Extract-ctrl$") ~ "Extraction control",
+      str_detect(sample, "NTC$") ~ "PCR control",
+      TRUE ~ "Biological"
+    )
+  )
+})
+```
+
+
+```{r}
+#| label: fig-illumina-qc
+#| fig-width: 12
+#| fig-height: 7
+#| warning: false
+#| message: false
+
+# 1. Combine DADA2 tracking data -----------------------------------------
+
+qc_tracking <- purrr::map_dfr(markers, function(m) {
+
+  get(paste0("track_", m)) %>%
+    as.data.frame() %>%
+    tibble::rownames_to_column("sample") %>%
+    mutate(
+      marker = m,
+      sample_type = case_when(
+        str_detect(sample, "Extract-ctrl$") ~ "Extraction control",
+        str_detect(sample, "NTC$") ~ "PCR control",
+        TRUE ~ "Biological"
+      )
+    )
+})
+
+# 2. Calculate median reads at each processing step -----------------------
+
+qc_steps <- qc_tracking %>%
+  filter(sample_type == "Biological") %>%
+  group_by(marker) %>%
+  summarise(
+    across(
+      c(dada2_input, filtered, dada_f, merged, nonchim),
+      median
+    ),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(
+    cols = -marker,
+    names_to = "step",
+    values_to = "median_reads"
+  ) %>%
+  mutate(
+    step = factor(
+      step,
+      levels = c("dada2_input", "filtered", "dada_f",
+                 "merged", "nonchim")
+    )
+  )
+
+# 3. Figure: DADA2 read retention ----------------------------------------
+
+p_retention <- ggplot(
+  qc_steps,
+  aes(x = step, y = median_reads, group = 1)
+) +
+  geom_line(colour = "#0072B2", linewidth = 0.8) +
+  geom_point(colour = "#0072B2", size = 2.5) +
+  facet_wrap(~ marker, scales = "free_y") +
+  scale_x_discrete(labels = c(
+    dada2_input = "Input",
+    filtered = "Filtered",
+    dada_f = "Denoised F",
+    merged = "Merged",
+    nonchim = "Nonchim"
+  )) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(
+    x = NULL,
+    y = "Median reads per sample",
+    title = "DADA2 read retention across markers",
+    subtitle = "Biological samples only"
+  ) +
+  theme_bw(base_size = 11) +
+  theme(
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(angle = 40, hjust = 1)
+  )
+
+print(p_retention)
+
+# 4. Figure: Final sequencing depth per sample ----------------------------
+
+p_depth <- qc_samples %>%
+  mutate(
+    marker = factor(marker, levels = markers),
+    sample_type = factor(
+      sample_type,
+      levels = c("Biological", "Extraction control", "PCR control")
+    ),
+    sample_order = as.integer(str_extract(sample, "^[0-9]+"))
+  ) %>%
+  ggplot(aes(
+    x = sample_order,
+    y = final_reads,
+    fill = sample_type
+  )) +
+  geom_col(width = 0.85) +
+  facet_wrap(~ marker, scales = "free_y") +
+  scale_fill_manual(values = c(
+    "Biological" = "#0072B2",
+    "Extraction control" = "#D55E00",
+    "PCR control" = "#CC79A7"
+  )) +
+  scale_x_continuous(breaks = c(1, 10, 20, 30, 34, 35)) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(
+    x = "Sample number",
+    y = "Non-chimeric reads",
+    fill = NULL,
+    title = "Final sequencing depth per sample"
+  ) +
+  theme_bw(base_size = 11) +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
+
+print(p_depth)
+```
+
+
+```{r}
+#| label: fig-dada2-combined
+#| fig-width: 9
+#| fig-height: 5
+#| fig-cap: "Median DADA2 read retention across markers, expressed relative to the median input read count."
+
+# Calculate percentage retention per marker
+qc_steps_perc <- qc_steps %>%
+  group_by(marker) %>%
+  mutate(
+    retention = 100 * median_reads /
+      median_reads[step == "dada2_input"]
+  ) %>%
+  ungroup()
+
+# Combined plot
+
+p_retention_combined <- ggplot(
+  qc_steps_perc,
+  aes(x = step, y = retention, colour = marker, group = marker)
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.5) +
+  scale_x_discrete(labels = c(
+    dada2_input = "Input",
+    filtered = "Filtered",
+    dada_f = "Denoised F",
+    merged = "Merged",
+    nonchim = "Nonchim"
+  )) +
+  scale_y_continuous(
+    breaks = seq(80, 100, 5),
+    labels = scales::label_percent(scale = 1)
+  ) +
+  coord_cartesian(ylim = c(80, 100)) +
+  scale_colour_brewer(palette = "Dark2") +
+  labs(
+    x = NULL,
+    y = "Reads retained (%)",
+    colour = "Marker",
+    title = "DADA2 read retention across markers"
+  ) +
+  theme_bw(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "right"
+  )
+
+p_retention_combined
+
+```
+
+
+## Quality control by marker {.tabset}
+
+::: {.panel-tabset}
+
+### 16S
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 4
+
+p_retention %+% subset(qc_steps, marker == "16S") +
+  facet_null()
+```
+
+### 18S
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 4
+
+p_retention %+% subset(qc_steps, marker == "18S") +
+  facet_null()
+```
+
+### COI
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 4
+
+p_retention %+% subset(qc_steps, marker == "COI") +
+  facet_null()
+```
+
+### ITS
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 4
+
+p_retention %+% subset(qc_steps, marker == "ITS") +
+  facet_null()
+```
+
+### rbcL
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 4
+
+p_retention %+% subset(qc_steps, marker == "rbcL") +
+  facet_null()
+```
+
+:::
+
+
+```{r}
+#| label: fig-rarefaction-combined
+#| fig-width: 9
+#| fig-height: 5
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(vegan)
+
+markers <- c("16S", "18S", "COI", "ITS", "rbcL")
+
+# Calculate rarefaction curves -------------------------------------------
+
+rarefaction <- purrr::map_dfr(markers, function(m) {
+
+  seqtab <- get(paste0("seqtab_", m))
+
+  # Exclude both negative controls
+  seqtab <- seqtab[
+    !grepl("Extract-ctrl$|NTC$", rownames(seqtab)),
+    , drop = FALSE
+  ]
+
+  # Remove zero-depth samples
+  seqtab <- seqtab[rowSums(seqtab) > 0, , drop = FALSE]
+
+  # Depths covering the full range of each sample
+  max_depth <- max(rowSums(seqtab))
+  depths <- unique(round(seq(1, max_depth, length.out = 60)))
+
+  purrr::map_dfr(seq_len(nrow(seqtab)), function(i) {
+
+    sample_depth <- rowSums(seqtab[i, , drop = FALSE])
+
+    d <- unique(c(
+      depths[depths <= sample_depth],
+      sample_depth
+    ))
+
+    tibble(
+      marker = m,
+      sample = rownames(seqtab)[i],
+      depth = d,
+      richness = vapply(
+        d,
+        function(n) as.numeric(
+          vegan::rarefy(seqtab[i, , drop = FALSE], sample = n)
+        ),
+        numeric(1)
+      )
+    )
+  })
+})
+
+# Summary curves:
+# Recalculate on a common depth grid for each marker so that
+# all biological samples contribute at every plotted depth.
+
+rarefaction_summary <- purrr::map_dfr(markers, function(m) {
+
+  x <- get(paste0("seqtab_", m))
+
+  # Exclude negative controls
+  x <- x[!grepl("Extract-ctrl$|NTC$", rownames(x)), , drop = FALSE]
+
+  # Exclude COI sample 22
+  if (m == "COI") {
+    x <- x[!grepl("^22_COI_", rownames(x)), , drop = FALSE]
+  }
+
+  depths <- unique(round(seq(1, min(rowSums(x)), length.out = 60)))
+
+  purrr::map_dfr(depths, function(d) {
+
+    richness <- as.numeric(vegan::rarefy(x, sample = d))
+
+    tibble(
+      marker = m,
+      depth = d,
+      mean_richness = mean(richness),
+      sd_richness = sd(richness)
+    )
+  })
+})
+
+# Combined figure --------------------------------------------------------
+
+p_rarefaction_combined <- ggplot(
+  rarefaction_summary,
+  aes(x = depth, y = mean_richness, colour = marker, fill = marker)
+) +
+  geom_ribbon(
+    aes(
+      ymin = pmax(0, mean_richness - sd_richness),
+      ymax = mean_richness + sd_richness
+    ),
+    alpha = 0.15,
+    colour = NA
+  ) +
+  geom_line(linewidth = 1.1) +
+  scale_colour_brewer(palette = "Dark2") +
+  scale_fill_brewer(palette = "Dark2") +
+  scale_x_continuous(labels = scales::label_comma()) +
+  labs(
+    x = "Sequencing depth (reads)",
+    y = "Expected ASV richness",
+    colour = "Marker",
+    fill = "Marker",
+    title = "Rarefaction curves across markers",
+    subtitle = "Mean ± SD across biological samples"
+  ) +
+  theme_bw(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "right"
+  )
+
+p_rarefaction_combined
+```
+
+```{r rarefaction}
+plot_rarefaction <- function(m) {
+
+  rarefaction %>%
+    filter(marker == m) %>%
+    ggplot(aes(
+      x = depth,
+      y = richness,
+      group = sample
+    )) +
+    geom_line(
+      colour = "#0072B2",
+      alpha = 0.45,
+      linewidth = 0.6
+    ) +
+    scale_x_continuous(labels = scales::label_comma()) +
+    labs(
+      x = "Sequencing depth (reads)",
+      y = "Expected ASV richness",
+      title = paste0(m, " rarefaction curves"),
+      subtitle = "Individual biological samples"
+    ) +
+    theme_bw(base_size = 12) +
+    theme(
+      panel.grid.minor = element_blank()
+    )
+}
+```
+
+
+::: {.panel-tabset}
+
+## 16S
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 5
+plot_rarefaction("16S")
+```
+
+## 18S
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 5
+plot_rarefaction("18S")
+```
+
+## COI
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 5
+plot_rarefaction("COI")
+```
+
+## ITS
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 5
+plot_rarefaction("ITS")
+```
+
+## rbcL
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 5
+plot_rarefaction("rbcL")
+```
+
+:::

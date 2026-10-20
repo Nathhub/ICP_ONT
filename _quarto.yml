@@ -5,5 +5,7 @@ project:
 website:
   title: "ICP_ONT Report"
   navbar: false
+
 execute:
-  freeze: false
+  freeze: auto
+  cache: true

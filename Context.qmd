@@ -61,9 +61,117 @@ library(ggspatial)
 
 ```
 
+
+# 🧬 Sequencing and bioinformatics overview
+
+
+Six metabarcoding markers were used to characterise complementary components of marine eDNA biodiversity. For each marker, **33 environmental samples and two negative controls** (extraction and PCR controls) were analysed, representing **210 sequencing libraries**.
+
+- **16S rRNA V4:** Bacteria and archaea
+- **18S rRNA V4:** Eukaryotes, including protists and phytoplankton
+- **COI:** Metazoans
+- **12S rRNA (MiFish):** Fish
+- **ITS:** Primarily fungi
+- **rbcL:** Photosynthetic organisms, particularly diatoms
+
+Amplicons were sequenced at the **Centre for Genomic Research (CGR), University of Liverpool**, using Illumina MiSeq i100 paired-end sequencing (2 × 300 bp).
+
+## Metabarcoding markers and primers
+
+```{r}
+library(knitr)
+library(kableExtra)
+
+primers <- tibble::tribble(
+  ~Marker, ~`Fragment (bp)`, ~Primer, ~`Sequence (5′–3′)`, ~Reference,
+  "16S V4", "~252", "515F_mod_CGR", "GTGYCAGCMGCCGCGGTAA", "Parada et al.",
+  "16S V4", "~252", "806R_mod_CGR", "GGACTACNVGGGTWTCTAAT", "Apprill et al.",
+  "18S V4", "~400", "TAReuk454FWD1_CGR", "CCAGCASCYGCGGTAATTCC", "Stoeck et al., 2010",
+  "18S V4", "~400", "TAReukREV3_CGR", "ACTTTCGTTCTTGATYRA", "Stoeck et al., 2010",
+  "COI", "~313", "mlCOIintF_CGR", "GGWACWGGWTGAACWGTWTAYCCYCC", "Leray, 2013",
+  "COI", "~313", "jgHCO2198_CGR", "TAIACYTCIGGRTGICCRAARAAYCA", "Folmer et al., 1994",
+  "MiFish (12S)", "~170", "MiFish-U-F_CGR", "GTCGGTAAAACTCGTGCCAGC", "Miya et al., 2015",
+  "MiFish (12S)", "~170", "MiFish-U-R_mod_CGR", "CATAGTGGGGTATCTAATCCCAGTTTGT", "Stoeckle et al., 2022",
+  "ITS2", "~250", "ITS3", "GCATCGATGAAGAACGCAGC", "White et al., 1990",
+  "ITS2", "~250", "ITS4", "TCCTCCGCTTATTGATATGC", "White et al., 1990",
+  "rbcL", "~312", "708F-DEG", "AGGTGAAGYWAAAGGTTCWTAYTTAAA", "Vasselon et al., 2017",
+  "rbcL", "~312", "R3-DEG", "CCTTCTAATTTACCWACWACWG", "Vasselon et al., 2017"
+)
+
+primers |>
+  kbl(
+    format = "html",
+    escape = TRUE,
+    align = c("l", "c", "l", "l", "l")
+  ) |>
+  kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    full_width = FALSE,
+    position = "center"
+  ) |>
+  column_spec(1, width = "115px", bold = TRUE) |>
+  column_spec(2, width = "95px") |>
+  column_spec(3, width = "195px") |>
+  column_spec(4, width = "285px", extra_css = "font-family: monospace; font-size: 0.9em;") |>
+  column_spec(5, width = "150px") |>
+  collapse_rows(
+    columns = 1:2,
+    valign = "middle",
+    row_group_label_position = "stack"
+  )
+```
+
+**Library preparation:** CGR overhang sequences were added to the 5′ ends of the forward (`ACACTCTTTCCCTACACGACGCTCTTCCGATCT`) and reverse (`GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT`) primers. These overhangs are excluded from the sequences in the table.
+
+## Bioinformatics processing parameters
+
+Primer trimming was performed with **Cutadapt v5.2**, followed by ASV inference and taxonomic assignment using **DADA2**.
+
+For all markers, Cutadapt used an **error rate of 0.1**, minimum primer **overlap of 15 bp**, **no indels** and `--discard-untrimmed`. Both forward and reverse primer matches were required.
+
+```{r}
+
+params <- tribble(
+  ~Marker, ~`Truncation R1/R2 (bp)`, ~`Taxonomic reference`,
+  "16S",    "250 / 250", "SILVA 138.2",
+  "18S",    "270 / 255", "PR2 5.1.0",
+  "COI",    "260 / 260", "MIDORI2 GB273",
+  "MiFish", "None",      "MitoFish (Jul 2026)",
+  "ITS",    "270 / 270", "UNITE (Feb 2025)",
+  "rbcL",   "250 / 250", "Diat.barcode 16.3"
+)
+
+params |>
+  kbl(
+    format = "html",
+    align = c("l", "c", "l"),
+    escape = TRUE
+  ) |>
+  kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    full_width = FALSE,
+    position = "center"
+  ) |>
+  column_spec(1, bold = TRUE, width = "90px") |>
+  column_spec(2, width = "190px") |>
+  column_spec(3, width = "190px")
+```
+
+
+**DADA2 settings shared across markers:**
+
+- **Filtering:** `maxEE = c(2,3)`, `maxN = 0`, `minLen = 200`, `rm.phix = TRUE`.
+- **Denoising:** Independent forward/reverse error models, with `pool = "pseudo"`.
+- **Paired-end merging:** `minOverlap = 90`, `trimOverhang = TRUE`.
+- **Chimera removal:** `method = "consensus"`, `allowOneOff = FALSE`.
+- **Taxonomy:** `assignTaxonomy()` using marker-specific reference databases; 16S species-level assignment additionally used `addSpecies()`.
+
+Truncation lengths are expressed as R1/R2 in base pairs. "None" indicates no fixed-length truncation. Other unspecified settings used DADA2 defaults.
+
+
 ```{r load_data}
 data_dir <- "data/Illumina"
-markers <- c("16S", "18S", "COI", "ITS", "rbcL")
+markers <- c("16S", "18S", "COI", "MiFish", "ITS", "rbcL")
 
 for (m in markers) {
   track <- readRDS(file.path(data_dir, paste0(m, "_read-count-tracking.rds")))
@@ -318,6 +426,17 @@ p_retention %+% subset(qc_steps, marker == "COI") +
   facet_null()
 ```
 
+### MiFish
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 4
+
+p_retention %+% subset(qc_steps, marker == "MiFish") +
+  facet_null()
+```
+
 ### ITS
 
 ```{r}
@@ -353,7 +472,7 @@ p_retention %+% subset(qc_steps, marker == "rbcL") +
 library(tidyverse)
 library(vegan)
 
-markers <- c("16S", "18S", "COI", "ITS", "rbcL")
+markers <- c("16S", "18S", "COI", "MiFish", "ITS", "rbcL")
 
 # Calculate rarefaction curves -------------------------------------------
 
@@ -523,6 +642,16 @@ plot_rarefaction("18S")
 plot_rarefaction("COI")
 ```
 
+## MiFish
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 5
+plot_rarefaction("MiFish")
+```
+
+
 ## ITS
 
 ```{r}
@@ -542,3 +671,256 @@ plot_rarefaction("rbcL")
 ```
 
 :::
+
+# 📦 Building the phyloseq objects
+
+```{r making_ps_objects}
+library(phyloseq)
+
+markers <- c("16S", "18S", "COI", "MiFish", "ITS", "rbcL")
+
+for (m in markers) {
+
+  seqtab <- get(paste0("seqtab_", m))
+  taxa <- get(paste0("taxa_", m))
+
+  # Check that taxonomy and ASV sequences match
+  stopifnot(setequal(colnames(seqtab), rownames(taxa)))
+
+  # Align taxonomy to the ASV table
+  taxa <- taxa[colnames(seqtab), , drop = FALSE]
+
+  # Assign simple ASV identifiers
+  asv_ids <- paste0("ASV", seq_len(ncol(seqtab)))
+
+  sequences <- colnames(seqtab)
+
+  colnames(seqtab) <- asv_ids
+  rownames(taxa) <- asv_ids
+
+  # Sample metadata
+  metadata <- data.frame(
+    SampleID = rownames(seqtab),
+    SampleType = ifelse(
+      grepl("Extract-ctrl$", rownames(seqtab)), "Extraction control",
+      ifelse(
+        grepl("NTC$", rownames(seqtab)), "PCR control", "Biological"
+      )
+    ),
+    row.names = rownames(seqtab)
+  )
+
+  # Create phyloseq object
+  ps <- phyloseq(
+    otu_table(seqtab, taxa_are_rows = FALSE),
+    tax_table(as.matrix(taxa)),
+    sample_data(metadata),
+    refseq(Biostrings::DNAStringSet(
+      setNames(sequences, asv_ids)
+    ))
+  )
+
+  assign(paste0("ps_", m), ps)
+}
+
+# 18S - PR2
+colnames(tax_table(ps_18S)) <- c(
+  "Domain", "Supergroup", "Division", "Subdivision",
+  "Class", "Order", "Family", "Genus", "Species"
+)
+
+# rbcL - Diat.barcode 16.3
+colnames(tax_table(ps_rbcL)) <- c(
+  "Empire", "Kingdom", "Subkingdom", "Phylum",
+  "Subphylum", "Class", "Order", "Family",
+  "Genus", "Species"
+)
+```
+
+## Proportion of unassigned ASVs
+
+```{r unclassified_ASVs}
+unclassified_summary <- purrr::map_dfr(markers, function(m) {
+
+  ps <- get(paste0("ps_", m))
+
+  tax_df <- as.data.frame(as(tax_table(ps), "matrix"))
+
+  tax_df %>%
+    summarise(across(
+      everything(),
+      ~ sum(
+        is.na(.) |
+        trimws(as.character(.)) == "" |
+        tolower(trimws(as.character(.))) == "unclassified"
+      )
+    )) %>%
+    pivot_longer(
+      everything(),
+      names_to = "Rank",
+      values_to = "n_unclassified_ASVs"
+    ) %>%
+    mutate(
+      Marker = m,
+      total_ASVs = ntaxa(ps),
+      percent_unclassified = 100 * n_unclassified_ASVs / total_ASVs
+    )
+})
+
+unclassified_summary
+```
+
+```{r plot_unassigned_ASVs}
+# Preserve taxonomic rank order as stored in the taxonomy tables
+rank_order <- unique(unclassified_summary$Rank)
+
+unclassified_summary <- unclassified_summary %>%
+  mutate(
+    Marker = factor(Marker, levels = markers),
+    Rank = factor(Rank, levels = rank_order)
+  )
+
+p_unclassified <- ggplot(
+  unclassified_summary,
+  aes(x = Rank, y = percent_unclassified)
+) +
+  geom_col(fill = "#0072B2", width = 0.75) +
+  facet_wrap(~ Marker, scales = "free_x") +
+  scale_y_continuous(
+    limits = c(0, 100),
+    breaks = seq(0, 100, 20),
+    labels = function(x) paste0(x, "%")
+  ) +
+  labs(
+    x = "Taxonomic rank",
+    y = "Unclassified ASVs (%)",
+    title = "Proportion of unclassified ASVs across markers"
+  ) +
+  theme_classic(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1),
+    strip.background = element_rect(fill = "grey95", colour = NA),
+    strip.text = element_text(face = "bold")
+  )
+
+p_unclassified
+```
+
+```{r, fig.width= 12, fig.height=7}
+# Preserve taxonomic rank order as stored in the taxonomy tables
+rank_order <- unique(unclassified_summary$Rank)
+
+unclassified_summary <- unclassified_summary %>%
+  mutate(
+    Marker = factor(Marker, levels = markers),
+    Rank = factor(Rank, levels = rank_order)
+  )
+
+p_unclassified <- ggplot(
+  unclassified_summary,
+  aes(x = Rank, y = percent_unclassified)
+) +
+  geom_col(fill = "#0072B2", width = 0.75) +
+  facet_wrap(~ Marker, scales = "free_x") +
+  scale_y_continuous(
+    limits = c(0, 100),
+    breaks = seq(0, 100, 20),
+    labels = function(x) paste0(x, "%")
+  ) +
+  labs(
+    x = "Taxonomic rank",
+    y = "Unclassified ASVs (%)",
+    title = "Proportion of unclassified ASVs across markers"
+  ) +
+  theme_classic(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1),
+    strip.background = element_rect(fill = "grey95", colour = NA),
+    strip.text = element_text(face = "bold")
+  )
+
+p_unclassified
+```
+
+```{r}
+#| label: fig-assigned-asvs-combined
+#| fig-width: 10
+#| fig-height: 5
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(phyloseq)
+
+markers <- c("16S", "18S", "COI", "MiFish", "ITS", "rbcL")
+
+# Define a general taxonomic order spanning all databases
+rank_levels <- c(
+  "Empire",
+  "Domain",
+  "Kingdom",
+  "Supergroup",
+  "Division",
+  "Subdivision",
+  "Subkingdom",
+  "Phylum",
+  "Subphylum",
+  "Class",
+  "Order",
+  "Family",
+  "Genus",
+  "Species"
+)
+
+# Count assigned ASVs at each rank for each marker
+assigned_summary <- purrr::map_dfr(markers, function(m) {
+  
+  ps <- get(paste0("ps_", m))
+  tax_df <- as.data.frame(as(tax_table(ps), "matrix"))
+  
+  tibble(
+    Rank = colnames(tax_df),
+    n_assigned_ASVs = sapply(tax_df, function(x) {
+      sum(
+        !is.na(x) &
+        trimws(as.character(x)) != "" &
+        !tolower(trimws(as.character(x))) %in% c("na", "unclassified")
+      )
+    }),
+    Marker = m,
+    total_ASVs = ntaxa(ps)
+  )
+})
+
+# Keep only ranks that are actually present
+assigned_summary <- assigned_summary %>%
+  mutate(
+    Rank = factor(Rank, levels = rank_levels),
+    Marker = factor(Marker, levels = markers)
+  ) %>%
+  arrange(Marker, Rank)
+
+# Combined plot
+p_assigned_combined <- ggplot(
+  assigned_summary,
+  aes(x = Rank, y = n_assigned_ASVs, colour = Marker, group = Marker)
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.5) +
+  scale_colour_brewer(palette = "Dark2") +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(
+    x = "Taxonomic rank",
+    y = "Assigned ASVs (n)",
+    colour = "Marker",
+    title = "Number of assigned ASVs across taxonomic ranks"
+  ) +
+  theme_bw(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "right"
+  )
+
+p_assigned_combined
+```

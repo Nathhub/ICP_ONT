@@ -924,3 +924,211 @@ p_assigned_combined <- ggplot(
 
 p_assigned_combined
 ```
+
+
+```{r, warning=FALSE}
+library(microbiome)
+
+my_colors <- c(
+  "#FF6666", "#8DD3C7", "#377EB8", "#4DAF4A",
+  "#984EA3", "#A6D854", "#FFFF33", "#FF7F00",
+  "#F781BF", "#999999", "#66C2A5", "#FC8D62",
+  "#8DA0CB", "#E78AC3", "#FFD92F", "#E5C494",
+  "#B3B3B3", "#A65628", "#FFFFB3", "#BEBADA",
+  "#FB8072", "#80B1D3", "#FDB462"
+)
+
+plot_class_composition <- function(ps, marker, top_n = 20) {
+
+  # 1. Keep biological samples only
+  ps <- subset_samples(ps, SampleType == "Biological")
+  ps <- prune_samples(sample_sums(ps) > 0, ps)
+  ps <- prune_taxa(taxa_sums(ps) > 0, ps)
+
+  # 2. Replace missing class assignments
+  tax <- as(tax_table(ps), "matrix")
+
+  tax[, "Class"][
+    is.na(tax[, "Class"]) |
+    trimws(tax[, "Class"]) == "" |
+    tolower(trimws(tax[, "Class"])) %in% c("na", "unclassified")
+  ] <- "Unassigned"
+
+  tax_table(ps) <- tax_table(tax)
+
+  # 3. Agglomerate to Class
+  ps_class <- tax_glom(
+    ps,
+    taxrank = "Class",
+    NArm = FALSE
+  )
+
+  # 4. Convert to relative abundance
+  ps_rel <- microbiome::transform(
+    ps_class,
+    "compositional"
+  )
+
+  # 5. Select top classes by mean relative abundance
+  top_classes <- microbiome::top_taxa(
+    ps_rel,
+    n = top_n
+  )
+
+  # 6. Melt and group remaining classes
+  df <- psmelt(ps_rel) %>%
+    mutate(
+      Class = as.character(Class),
+      Class_plot = if_else(
+        OTU %in% top_classes | Class == "Unassigned",
+        Class,
+        "Other"
+      ),
+      Number = as.integer(
+        stringr::str_extract(Sample, "^[0-9]+")
+      )
+    ) %>%
+    group_by(Sample, Number, Class_plot) %>%
+    summarise(
+      Abundance = sum(Abundance),
+      .groups = "drop"
+    )
+
+  # 7. Order classes by total relative abundance
+  class_order <- df %>%
+    filter(!Class_plot %in% c("Other", "Unassigned")) %>%
+    group_by(Class_plot) %>%
+    summarise(
+      Total = sum(Abundance),
+      .groups = "drop"
+    ) %>%
+    arrange(desc(Total)) %>%
+    pull(Class_plot)
+
+  class_order <- c(
+    class_order,
+    intersect("Unassigned", unique(df$Class_plot)),
+    intersect("Other", unique(df$Class_plot))
+  )
+
+  df$Class_plot <- factor(
+    df$Class_plot,
+    levels = class_order
+  )
+
+  # 8. Assign colours
+  plot_colors <- setNames(
+    rep(my_colors, length.out = length(class_order)),
+    class_order
+  )
+
+  if ("Unassigned" %in% class_order) {
+    plot_colors["Unassigned"] <- "#666666"
+  }
+
+  if ("Other" %in% class_order) {
+    plot_colors["Other"] <- "#C0C0C0"
+  }
+
+  # 9. Plot
+  ggplot(
+    df,
+    aes(
+      x = factor(Number, levels = 1:33),
+      y = Abundance,
+      fill = Class_plot
+    )
+  ) +
+    geom_col(width = 0.85) +
+    scale_fill_manual(
+      values = plot_colors,
+      drop = FALSE
+    ) +
+    scale_y_continuous(
+      labels = scales::percent,
+      expand = expansion(mult = c(0, 0))
+    ) +
+    labs(
+      title = paste0(marker, " — Class-level composition"),
+      x = "Sample number",
+      y = "Relative abundance (%)",
+      fill = "Class"
+    ) +
+    theme_classic(base_size = 12) +
+    theme(
+      axis.text.x = element_text(
+        angle = 45,
+        hjust = 1
+      ),
+      legend.position = "bottom",
+      legend.direction = "horizontal"
+    ) +
+    guides(
+      fill = guide_legend(nrow = 5, byrow = TRUE)
+    )
+}
+```
+
+
+# Class-level taxonomical composition
+
+## 16S
+
+```{r}
+#| echo: false
+#| fig-width: 12
+#| fig-height: 6
+
+plot_class_composition(ps_16S, "16S")
+```
+
+## 18S
+
+```{r}
+#| echo: false
+#| fig-width: 12
+#| fig-height: 6
+
+plot_class_composition(ps_18S, "18S")
+```
+
+## COI
+
+```{r}
+#| echo: false
+#| fig-width: 12
+#| fig-height: 6
+
+plot_class_composition(ps_COI, "COI")
+```
+
+## MiFish
+
+```{r}
+#| echo: false
+#| fig-width: 12
+#| fig-height: 6
+
+plot_class_composition(ps_MiFish, "MiFish")
+```
+
+## ITS
+
+```{r}
+#| echo: false
+#| fig-width: 12
+#| fig-height: 6
+
+plot_class_composition(ps_ITS, "ITS")
+```
+
+## rbcL
+
+```{r}
+#| echo: false
+#| fig-width: 12
+#| fig-height: 6
+
+plot_class_composition(ps_rbcL, "rbcL")
+```
+

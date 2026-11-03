@@ -50,14 +50,14 @@ library(Biostrings)
 library(ggOceanMaps)
 library(ggspatial)
 
-# # Metadata → rownames = barcodeXX
-# meta <- read_xlsx("data/Metadata_JC269_UKWC.xlsx")
-# 
-# meta <- meta %>%
-#   mutate(
-#     Lon = as.numeric(Lon),
-#     Lat = as.numeric(Lat)
-#   )
+# Metadata → rownames = barcodeXX
+meta <- read_xlsx("data/Metadata_JC269_UKWC.xlsx")
+
+meta <- meta %>%
+  mutate(
+    Lon = as.numeric(Lon),
+    Lat = as.numeric(Lat)
+  )
 
 ```
 

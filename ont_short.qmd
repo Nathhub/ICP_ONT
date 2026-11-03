@@ -1,0 +1,101 @@
+---
+title: "Nanopore metabarcoding - Short fragments"
+author: "Nathan"
+output-file: ont_short.html
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    theme: cosmo
+    code-fold: true
+    code-block-bg: true
+editor: source
+execute:
+  echo: TRUE
+  warning: false
+  message: false
+---
+
+# Overview
+
+Oxford Nanopore Technologies (ONT) metabarcoding data were processed for multiple marine eDNA markers, including 16S, 18S V4, ITS, COI and MiFish 12S. The workflow was developed iteratively using representative samples before being applied across the full dataset.
+
+The general processing strategy consisted of:
+
+
+1. Identifying and removing PCR primers using Cutadapt and retaining only reads containing the expected linked forward and reverse primer combination. Applying marker-specific length filters.
+2. Applying read-quality filtering using Chopper.
+3. OTU consensus generation using Amplicon_sorter.
+4. Assigning taxonomy using DADA2 assignTaxonomy()
+
+For each marker, Cutadapt was supplied with the expected primer pair in both orientations using linked adapters:
+
+```
+cutadapt \
+    -g FORWARD...REVERSE_COMPLEMENT_REVERSE \
+    -g REVERSE...REVERSE_COMPLEMENT_FORWARD \
+    --error-rate <marker-specific> \
+    -O 15 \
+    --cores=0 \
+    --discard-untrimmed
+```
+
+Below is the table summarising the cutadapt settings:
+
+| Marker | Primers | Linked-primer Cutadapt pattern | Error rate | Min overlap | Length filtering in Cutadapt | Notes / current choice |
+|---|---|---|---:|---:|---|---|
+| **16S V4** | 515F_mod / 806R_mod | `GTGYCAGCMGCCGCGGTAA...ATTAGAWACCCBNGTAGTCC` and reverse orientation | **0.10** | **15** | none initially; later post-trim filtering around **230–300 bp** | Very clean marker; high retention. |
+| **18S V4** | TAReuk454FWD1/TAReukREV3 `CCAGCASCYGCGGTAATTCC` / R `ACTTTCGTTCTTGATYRA` | `CCAGCASCYGCGGTAATTCC...TYRATCAAGAACGAAAGT` and `ACTTTCGTTCTTGATYRA...GGAATTACCGCRGSTGCTGG` | **0.25** | **15** | none during first trimming; planning broad post-trim window around **330–450 bp** | Current production setting. Dominant trimmed product ~**380 bp**. |
+| **COI** | mlCOIintF / jgHCO2198 | `GGWACWGGWTGAACWGTWTAYCCYCC...TGRTTYTTYGGNCAYCCNGARGTNTA` and reverse orientation | **0.25** | **15** | tested broad **280–360 bp** post-trim window | Current preferred setting. Dominant trimmed product ~**313 bp**. |
+| **MiFish 12S** | MiFish-U-F / R | `GTCGGTAAAACTCGTGCCAGC...CAAACTGGGATTAGATACCCCACTATG` and reverse orientation | **0.20** | **15** | none initially | We tested primer recovery; this marker had the unusual dual-length behaviour in the Illumina dataset, but for ONT we were still at primer-trimming/QC stage. |
+| **ITS** | ITS3 / ITS4 | `GCATCGATGAAGAACGCAGC...GCATATCAATAAGCGGAGGA` and reverse orientation | **0.20** | **15** | broad downstream window around **200–800 bp** | Kept broad because genuine ITS length variation is large. |
+
+```{r cutadapt_summary_fig}
+#| fig-width: 12
+#| fig-height: 7
+#| warning: false
+#| message: false
+
+library(tidyverse)
+
+markers <- c("16S", "18S", "COI", "MiFish", "ITS", "rbcL")
+
+cutadapt <- read_csv("data/nanopore/cutadapt_all_markers.csv")
+
+p_cutadapt <- cutadapt %>%
+  mutate(
+    marker = factor(marker, levels = markers),
+    sample_type = factor(
+      sample_type,
+      levels = c("Biological", "Extraction control", "PCR control")
+    ),
+    sample_order = sample_number
+  ) %>%
+  ggplot(aes(
+    x = sample_order,
+    y = reads_written,
+    fill = sample_type
+  )) +
+  geom_col(width = 0.85) +
+  facet_wrap(~ marker, scales = "free_y") +
+  scale_fill_manual(values = c(
+    "Biological" = "#0072B2",
+    "Extraction control" = "#D55E00",
+    "PCR control" = "#CC79A7"
+  )) +
+  scale_x_continuous(breaks = c(1, 10, 20, 30, 34, 35)) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(
+    x = "Sample number",
+    y = "Reads retained after primer trimming",
+    fill = NULL,
+    title = "Sequencing depth after Cutadapt primer trimming"
+  ) +
+  theme_bw(base_size = 11) +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
+
+print(p_cutadapt)
+```

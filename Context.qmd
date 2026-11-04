@@ -56,11 +56,65 @@ meta <- read_xlsx("data/Metadata_JC269_UKWC.xlsx")
 meta <- meta %>%
   mutate(
     Lon = as.numeric(Lon),
-    Lat = as.numeric(Lat)
+    Lat = as.numeric(Lat),
+    Temperature = as.numeric(Temperature),
+    Fluorescence = as.numeric(Fluorescence)
+  ) %>%
+  pivot_longer(
+    cols = c(Temperature, Fluorescence),
+    names_to = "Variable",
+    values_to = "Value"
   )
 
-```
 
+ggplot(meta, aes(x = Lat, y = Value)) +
+  geom_point(size = 2.5, colour = "steelblue") +
+  geom_line(colour = "steelblue", alpha = 0.6) +
+  facet_wrap(~Variable, ncol = 1, scales = "free_y") +
+  labs(
+    x = "Longitude (°)",
+    y = NULL
+  ) +
+  theme_bw(base_size = 13) +
+  theme(
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+``` 
+
+```{r, map}
+library(ggOceanMaps)
+library(ggspatial)
+
+# Define map limits
+lon1 <- min(meta$Lon, na.rm = TRUE) - 2
+lon2 <- max(meta$Lon, na.rm = TRUE) + 2
+lat1 <- min(meta$Lat, na.rm = TRUE) - 2
+lat2 <- max(meta$Lat, na.rm = TRUE) + 2
+
+# Sample locations
+stations <- meta %>%
+  distinct(ID, Lon, Lat, Station)
+
+# Plot
+basemap(
+  limits = c(lon1, lon2, lat1, lat2),
+  bathy.style = NULL
+) +
+  geom_spatial_point(
+    data = stations,
+    aes(x = Lon, y = Lat),
+    color = "red",
+    size = 2
+  ) +
+  coord_sf(expand = FALSE) +
+  labs(
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_bw(base_size = 13)
+```
 
 # 🧬 Sequencing and bioinformatics overview
 

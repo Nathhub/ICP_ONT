@@ -99,3 +99,20 @@ p_cutadapt <- cutadapt %>%
 
 print(p_cutadapt)
 ```
+
+
+## OTU table construction - 16S
+
+Consensus sequences generated independently for each sample using `amplicon_sorter` were combined into a single FASTA file. Sequences were dereplicated using VSEARCH (`--derep_fulllength --strand both`) to retain unique sequences at 100% identity, accounting for reverse complements. This reduced 6,791 consensus sequences to **2,118 unique sequence variants (OTUs)**.
+
+Original primer-trimmed and quality-filtered Nanopore reads were mapped against these OTUs using Minimap2 (`map-ont`). Primary alignments were extracted, excluding secondary, supplementary and unmapped alignments. Reads were retained if they met the following criteria:
+
+- Alignment identity ≥95%
+- Query coverage ≥95%
+- No minimum mapping quality (MAPQ) threshold
+
+Read counts per OTU were aggregated across all 33 samples and two controls to generate the OTU abundance table.
+
+**Results:** A total of 4,340,358 reads were assigned to 2,118 OTUs across 35 samples and controls. Of these, 1,703 OTUs received at least one read, while 415 had zero assigned reads. The latter may reflect ambiguous mapping between closely related sequence variants or alignment filtering and require further investigation.
+
+**Outputs:** `otu_table.tsv`, `otu_representatives_final.fasta` and `mapping_qc.tsv`.

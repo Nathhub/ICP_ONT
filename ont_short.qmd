@@ -116,3 +116,12 @@ Read counts per OTU were aggregated across all 33 samples and two controls to ge
 **Results:** A total of 4,340,358 reads were assigned to 2,118 OTUs across 35 samples and controls. Of these, 1,703 OTUs received at least one read, while 415 had zero assigned reads. The latter may reflect ambiguous mapping between closely related sequence variants or alignment filtering and require further investigation.
 
 **Outputs:** `otu_table.tsv`, `otu_representatives_final.fasta` and `mapping_qc.tsv`.
+
+::: {.callout-note}
+## Zero-abundance OTUs
+Of the 2,118 unique consensus variants, 1,703 recruited at least one read after filtering, while 415 (19.6%) had zero assigned reads. Among the latter, 333 (80.2%) received primary alignments that failed the ≥95% identity and/or coverage criteria, 81 (19.5%) received only secondary alignments, and one (0.2%) received no alignments. 
+
+These results indicate that zero-abundance variants primarily resulted from alignment filtering and competition among closely related consensus sequences rather than complete failure of read recruitment.
+
+Importantly, each retained sequencing read was counted only once, using its primary Minimap2 alignment. Overall, 4,340,358 reads (97.3% of input reads) were assigned to OTUs. Although closely related variants may compete for read assignments, this uncertainty may be reduced by aggregating abundances at higher taxonomic ranks following taxonomic classification.
+::: 

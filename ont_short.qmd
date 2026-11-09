@@ -125,3 +125,50 @@ These results indicate that zero-abundance variants primarily resulted from alig
 
 Importantly, each retained sequencing read was counted only once, using its primary Minimap2 alignment. Overall, 4,340,358 reads (97.3% of input reads) were assigned to OTUs. Although closely related variants may compete for read assignments, this uncertainty may be reduced by aggregating abundances at higher taxonomic ranks following taxonomic classification.
 ::: 
+
+The OTU count table (otu_table.tsv) and representative sequences (otu_representatives_final.fasta) were imported into R and saved as otu.rds. Taxonomy was assigned using DADA2 assignTaxonomy() and addSpecies() against SILVA v138.2, generating taxa.rds and taxa_bootstrap.rds.
+
+Taxonomic assignment was successful for 99.8% of reads at phylum level, 84.8% at family level, 70.7% at genus level and 3.1% at species level. The OTU table, taxonomy and representative sequences were then combined into a phyloseq object for downstream analyses.
+
+**Now let's repeat that for 18S!**
+
+## 18S OTU table and taxonomic assignment workflow
+
+| Step | Tool | Output |
+|---|---|---|
+| 1. Combine consensus sequences | Bash | `all_consensus.fasta` |
+| 2. Dereplicate at 100% identity | VSEARCH | `otu_representatives_final.fasta` |
+| 3. Build reference index | Minimap2 | `otu_reference.mmi` |
+| 4. Map original reads | `map_all_samples.sh` | Sorted BAM files |
+| 5. Generate OTU read counts | `build_otu_table.py` | `otu_table.tsv`, `mapping_qc.tsv` |
+| 6. Assign taxonomy | DADA2 + PR2 | `taxa.rds`, `taxa_bootstrap.rds` |
+
+
+## Comparison of OTU recovery across molecular markers
+
+| Metric | 16S | 18S | COI |
+|---|---:|---:|---:|
+| Original consensus sequences | 6,791 | 6,332 | 10,528 |
+| Unique variants (100% identity) | 2,118 | 1,918 | 3,079 |
+| OTUs with assigned reads | 1,703 | 1,679 | 2,716 |
+| Zero-abundance OTUs | 415 (19.6%) | 239 (12.5%) | 363 (11.8%) |
+| Total assigned reads | 4,340,358 | 5,425,992 | 8,807,835 |
+| Samples and controls | 35 | 35 | 35 |
+
+### Discussion
+
+COI recovered the highest number of unique sequence variants (3,079), followed by 16S (2,118) and 18S (1,918). COI also produced the greatest number of assigned reads (8.81 million), reflecting differences in sequencing depth and potentially amplification efficiency among markers.
+
+Following read mapping and filtering (≥95% identity and coverage), 11.8–19.6% of unique consensus variants received no reads. This proportion was highest for 16S (19.6%) and lowest for COI (11.8%). Zero-abundance OTUs likely result from alignment filtering and competition among closely related consensus variants, as demonstrated for 16S.
+
+Overall, the workflow successfully generated read-abundance tables for all three markers while preserving single-nucleotide differences between consensus sequences. However, differences in OTU richness should not be interpreted directly as differences in biological diversity without accounting for marker-specific resolution, amplification biases and sequencing depth.
+
+
+
+
+### A useful comparison with the Illumina dataset
+
+Since I used the same SILVA reference and DADA2 taxonomy functions for my Illumina 16S data, I could compare the two sequencing technologies using:
+- Percentage of OTUs/ASVs classified at each rank.
+- Percentage of sequencing reads classified at each rank.
+- Genus-level bootstrap confidence distributions.

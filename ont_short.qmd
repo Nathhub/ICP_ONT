@@ -164,6 +164,109 @@ Following read mapping and filtering (≥95% identity and coverage), 11.8–19.6
 Overall, the workflow successfully generated read-abundance tables for all three markers while preserving single-nucleotide differences between consensus sequences. However, differences in OTU richness should not be interpreted directly as differences in biological diversity without accounting for marker-specific resolution, amplification biases and sequencing depth.
 
 
+## COI taxonomic assignment
+
+Taxonomic assignment of the 3,079 COI OTUs was performed using DADA2 `assignTaxonomy()` against three reference databases: **eKOI, MZG and MIDORI2**.
+
+### Classification success
+
+| Database | Classified OTUs | OTUs (%) | Reads (%) |
+|:---------|----------------:|---------:|----------:|
+| eKOI     | 399             | 13.0     | 22.0      |
+| MZG      | 333             | 10.8     | 16.8      |
+| MIDORI2  | 116             | 3.8      | 4.7       |
+| **Combined** | **542**    | **17.6** | —         |
+
+eKOI provided the highest genus-level classification coverage. MZG contributed 131 additional OTUs not classified by eKOI, while MIDORI2 contributed only 12 OTUs not classified by either database. Combining all three databases increased the number of genus-classified OTUs to 542 (17.6%), leaving 2,537 OTUs (82.4%) unclassified.
+
+### Classification overlap
+
+```{r}
+#| label: fig-coi-venn
+#| fig-cap: "Overlap of genus-level COI taxonomic assignments across eKOI, MZG and MIDORI2."
+#| fig-width: 7
+#| fig-height: 6
+#| echo: false
+
+library(ggVennDiagram)
+library(ggplot2)
+
+# Exclusive overlap counts
+counts <- c(
+  eKOI_only = 167,
+  MZG_only = 100,
+  MIDORI2_only = 12,
+  eKOI_MZG = 159,
+  eKOI_MIDORI2 = 30,
+  MZG_MIDORI2 = 31,
+  All_three = 43
+)
+
+# Construct sets from the observed overlap counts
+make_ids <- function(prefix, n) paste0(prefix, seq_len(n))
+
+a <- make_ids("a", counts["eKOI_only"])
+b <- make_ids("b", counts["MZG_only"])
+c <- make_ids("c", counts["MIDORI2_only"])
+ab <- make_ids("ab", counts["eKOI_MZG"])
+ac <- make_ids("ac", counts["eKOI_MIDORI2"])
+bc <- make_ids("bc", counts["MZG_MIDORI2"])
+abc <- make_ids("abc", counts["All_three"])
+
+sets <- list(
+  eKOI = c(a, ab, ac, abc),
+  MZG = c(b, ab, bc, abc),
+  MIDORI2 = c(c, ac, bc, abc)
+)
+
+ggVennDiagram(
+  sets,
+  label = "count",
+  label_alpha = 0,
+  set_color = c("#3478C9", "#20A187", "#D89A35")
+) +
+  scale_fill_gradient(low = "white", high = "#B7D4EC") +
+  theme_void()
+```
+
+The three databases showed partial complementarity, but their assignments were not always consistent.
+
+### Agreement between databases
+
+| Comparison | Shared OTUs | Matching genera | Agreement (%) |
+|:-----------|------------:|----------------:|--------------:|
+| eKOI vs MZG | 202 | 123 | 60.9 |
+| eKOI vs MIDORI2 | 73 | 12 | 16.4 |
+| MZG vs MIDORI2 | 74 | 22 | 29.7 |
+
+Agreement was highest between eKOI and MZG (60.9%). MIDORI2 showed substantially lower agreement, including implausible metazoan assignments for sequences classified as marine protists by the other databases.
+
+### Vertebrate assignments
+
+Three OTUs (215 reads; 0.0024% of all COI reads) were classified as vertebrates. eKOI identified two closely related OTUs as *Homo sapiens* (200 reads) and one as *Ovis aries* (15 reads). These identifications were supported by independent BLASTn searches, including a 100% identity match across the full amplicon for *O. aries*. In contrast, MZG assigned these sequences to fish taxa, with low genus-level bootstrap support.
+
+These mammalian sequences may represent low-level contamination, although their occurrence across samples and negative controls should be examined before drawing conclusions.
+
+### Conclusion
+
+**eKOI and MZG provided the most useful and complementary COI classifications**, increasing genus-level coverage from 399 to 530 OTUs when combined. MIDORI2 contributed limited additional coverage and showed substantial taxonomic disagreement. Overall, the low genus-level classification success highlights limitations in available COI reference databases and the importance of independent validation of uncertain taxonomic assignments.
+
+### Optimisation of the MIDORI2 COI reference database
+
+The MIDORI2 UNIQ COI reference database (3,213,682 sequences) was processed to extract the region targeted by the mlCOIintF/jgHCO2198 primers for taxonomic assignment of nanopore metabarcoding data.
+
+An initial Cutadapt approach requiring detection of both primers retained only **258,463 sequences (8.0%)**, substantially reducing reference coverage. Further investigation showed that many references contained the forward-primer region but lacked a detectable reverse-primer binding site, probably because sequences had been truncated during their original preparation.
+
+The extraction strategy was therefore revised:
+
+- **Forward-primer trimming:** Cutadapt (`-e 0.25`, minimum overlap 24 bp, no indels) retained 2,960,095 sequences (92.1%).
+- **Reverse-primer trimming:** The reverse-complemented jgHCO2198 primer was removed when detected (`-e 0.30`, minimum overlap 20 bp, no indels), while unmatched references were retained. Primer-match positions were examined to identify appropriate matching parameters.
+- **Length optimisation:** Sequences exceeding 330 bp were truncated, preserving natural length variation among shorter references.
+- **Minimum-length filtering:** References shorter than 100 bp were excluded to remove fragments with limited taxonomic information.
+
+The resulting database is expected to contain **2,948,559 sequences (91.8% of the original)**, approximately **11.4 times more references** than the initial two-primer extraction. This strategy substantially improves potential taxonomic coverage while restricting reference sequences to the targeted COI region.
+
+The impact on taxonomic assignment accuracy and computational performance remains to be evaluated.
 
 
 ### A useful comparison with the Illumina dataset

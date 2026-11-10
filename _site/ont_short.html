@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.10.18">
+<meta name="generator" content="quarto-1.8.26">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -10,16 +10,10 @@
 
 <title>Nanopore metabarcoding - Short fragments – ICP_ONT Report</title>
 <style>
-/* Default styles provided by pandoc.
-** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
-*/
+code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: 1.5em;}
-div.column{flex: auto;}
-@media screen {
-div.columns{gap: min(4vw, 1.5em);}
-div.column{overflow-x: auto;}
-}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -73,14 +67,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <meta name="quarto:offset" content="./">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="site_libs/quarto-html/anchor.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-587c61ba64f3a5504c4d52d930310e48.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-172ba59bd5e0b52282274ba0c0cc16fc.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-e31584831b205ffbb2d98406f31c2a5b.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -124,7 +119,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a>
+  <ul class="collapse">
+  <li><a href="#otu-table-construction---16s" id="toc-otu-table-construction---16s" class="nav-link" data-scroll-target="#otu-table-construction---16s">OTU table construction - 16S</a></li>
+  <li><a href="#s-otu-table-and-taxonomic-assignment-workflow" id="toc-s-otu-table-and-taxonomic-assignment-workflow" class="nav-link" data-scroll-target="#s-otu-table-and-taxonomic-assignment-workflow">18S OTU table and taxonomic assignment workflow</a></li>
+  <li><a href="#comparison-of-otu-recovery-across-molecular-markers" id="toc-comparison-of-otu-recovery-across-molecular-markers" class="nav-link" data-scroll-target="#comparison-of-otu-recovery-across-molecular-markers">Comparison of OTU recovery across molecular markers</a>
+  <ul class="collapse">
+  <li><a href="#discussion" id="toc-discussion" class="nav-link" data-scroll-target="#discussion">Discussion</a></li>
+  </ul></li>
+  <li><a href="#coi-taxonomic-assignment" id="toc-coi-taxonomic-assignment" class="nav-link" data-scroll-target="#coi-taxonomic-assignment">COI taxonomic assignment</a>
+  <ul class="collapse">
+  <li><a href="#classification-success" id="toc-classification-success" class="nav-link" data-scroll-target="#classification-success">Classification success</a></li>
+  <li><a href="#classification-overlap" id="toc-classification-overlap" class="nav-link" data-scroll-target="#classification-overlap">Classification overlap</a></li>
+  <li><a href="#agreement-between-databases" id="toc-agreement-between-databases" class="nav-link" data-scroll-target="#agreement-between-databases">Agreement between databases</a></li>
+  <li><a href="#vertebrate-assignments" id="toc-vertebrate-assignments" class="nav-link" data-scroll-target="#vertebrate-assignments">Vertebrate assignments</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  <li><a href="#a-useful-comparison-with-the-illumina-dataset" id="toc-a-useful-comparison-with-the-illumina-dataset" class="nav-link" data-scroll-target="#a-useful-comparison-with-the-illumina-dataset">A useful comparison with the Illumina dataset</a></li>
+  </ul></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -293,13 +305,259 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="ont_short_files/figure-html/cutadapt_summary_fig-1.png" class="img-fluid figure-img" width="1440"></p>
+<p><img src="ont_short_files/figure-html/cutadapt_summary_fig-1.png" class="img-fluid figure-img" width="1152"></p>
 </figure>
 </div>
 </div>
 </div>
+<section id="otu-table-construction---16s" class="level2">
+<h2 class="anchored" data-anchor-id="otu-table-construction---16s">OTU table construction - 16S</h2>
+<p>Consensus sequences generated independently for each sample using <code>amplicon_sorter</code> were combined into a single FASTA file. Sequences were dereplicated using VSEARCH (<code>--derep_fulllength --strand both</code>) to retain unique sequences at 100% identity, accounting for reverse complements. This reduced 6,791 consensus sequences to <strong>2,118 unique sequence variants (OTUs)</strong>.</p>
+<p>Original primer-trimmed and quality-filtered Nanopore reads were mapped against these OTUs using Minimap2 (<code>map-ont</code>). Primary alignments were extracted, excluding secondary, supplementary and unmapped alignments. Reads were retained if they met the following criteria:</p>
+<ul>
+<li>Alignment identity ≥95%</li>
+<li>Query coverage ≥95%</li>
+<li>No minimum mapping quality (MAPQ) threshold</li>
+</ul>
+<p>Read counts per OTU were aggregated across all 33 samples and two controls to generate the OTU abundance table.</p>
+<p><strong>Results:</strong> A total of 4,340,358 reads were assigned to 2,118 OTUs across 35 samples and controls. Of these, 1,703 OTUs received at least one read, while 415 had zero assigned reads. The latter may reflect ambiguous mapping between closely related sequence variants or alignment filtering and require further investigation.</p>
+<p><strong>Outputs:</strong> <code>otu_table.tsv</code>, <code>otu_representatives_final.fasta</code> and <code>mapping_qc.tsv</code>.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Zero-abundance OTUs
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Of the 2,118 unique consensus variants, 1,703 recruited at least one read after filtering, while 415 (19.6%) had zero assigned reads. Among the latter, 333 (80.2%) received primary alignments that failed the ≥95% identity and/or coverage criteria, 81 (19.5%) received only secondary alignments, and one (0.2%) received no alignments.</p>
+<p>These results indicate that zero-abundance variants primarily resulted from alignment filtering and competition among closely related consensus sequences rather than complete failure of read recruitment.</p>
+<p>Importantly, each retained sequencing read was counted only once, using its primary Minimap2 alignment. Overall, 4,340,358 reads (97.3% of input reads) were assigned to OTUs. Although closely related variants may compete for read assignments, this uncertainty may be reduced by aggregating abundances at higher taxonomic ranks following taxonomic classification.</p>
+</div>
+</div>
+<p>The OTU count table (otu_table.tsv) and representative sequences (otu_representatives_final.fasta) were imported into R and saved as otu.rds. Taxonomy was assigned using DADA2 assignTaxonomy() and addSpecies() against SILVA v138.2, generating taxa.rds and taxa_bootstrap.rds.</p>
+<p>Taxonomic assignment was successful for 99.8% of reads at phylum level, 84.8% at family level, 70.7% at genus level and 3.1% at species level. The OTU table, taxonomy and representative sequences were then combined into a phyloseq object for downstream analyses.</p>
+<p><strong>Now let’s repeat that for 18S!</strong></p>
+</section>
+<section id="s-otu-table-and-taxonomic-assignment-workflow" class="level2">
+<h2 class="anchored" data-anchor-id="s-otu-table-and-taxonomic-assignment-workflow">18S OTU table and taxonomic assignment workflow</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Step</th>
+<th>Tool</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1. Combine consensus sequences</td>
+<td>Bash</td>
+<td><code>all_consensus.fasta</code></td>
+</tr>
+<tr class="even">
+<td>2. Dereplicate at 100% identity</td>
+<td>VSEARCH</td>
+<td><code>otu_representatives_final.fasta</code></td>
+</tr>
+<tr class="odd">
+<td>3. Build reference index</td>
+<td>Minimap2</td>
+<td><code>otu_reference.mmi</code></td>
+</tr>
+<tr class="even">
+<td>4. Map original reads</td>
+<td><code>map_all_samples.sh</code></td>
+<td>Sorted BAM files</td>
+</tr>
+<tr class="odd">
+<td>5. Generate OTU read counts</td>
+<td><code>build_otu_table.py</code></td>
+<td><code>otu_table.tsv</code>, <code>mapping_qc.tsv</code></td>
+</tr>
+<tr class="even">
+<td>6. Assign taxonomy</td>
+<td>DADA2 + PR2</td>
+<td><code>taxa.rds</code>, <code>taxa_bootstrap.rds</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="comparison-of-otu-recovery-across-molecular-markers" class="level2">
+<h2 class="anchored" data-anchor-id="comparison-of-otu-recovery-across-molecular-markers">Comparison of OTU recovery across molecular markers</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Metric</th>
+<th style="text-align: right;">16S</th>
+<th style="text-align: right;">18S</th>
+<th style="text-align: right;">COI</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Original consensus sequences</td>
+<td style="text-align: right;">6,791</td>
+<td style="text-align: right;">6,332</td>
+<td style="text-align: right;">10,528</td>
+</tr>
+<tr class="even">
+<td>Unique variants (100% identity)</td>
+<td style="text-align: right;">2,118</td>
+<td style="text-align: right;">1,918</td>
+<td style="text-align: right;">3,079</td>
+</tr>
+<tr class="odd">
+<td>OTUs with assigned reads</td>
+<td style="text-align: right;">1,703</td>
+<td style="text-align: right;">1,679</td>
+<td style="text-align: right;">2,716</td>
+</tr>
+<tr class="even">
+<td>Zero-abundance OTUs</td>
+<td style="text-align: right;">415 (19.6%)</td>
+<td style="text-align: right;">239 (12.5%)</td>
+<td style="text-align: right;">363 (11.8%)</td>
+</tr>
+<tr class="odd">
+<td>Total assigned reads</td>
+<td style="text-align: right;">4,340,358</td>
+<td style="text-align: right;">5,425,992</td>
+<td style="text-align: right;">8,807,835</td>
+</tr>
+<tr class="even">
+<td>Samples and controls</td>
+<td style="text-align: right;">35</td>
+<td style="text-align: right;">35</td>
+<td style="text-align: right;">35</td>
+</tr>
+</tbody>
+</table>
+<section id="discussion" class="level3">
+<h3 class="anchored" data-anchor-id="discussion">Discussion</h3>
+<p>COI recovered the highest number of unique sequence variants (3,079), followed by 16S (2,118) and 18S (1,918). COI also produced the greatest number of assigned reads (8.81 million), reflecting differences in sequencing depth and potentially amplification efficiency among markers.</p>
+<p>Following read mapping and filtering (≥95% identity and coverage), 11.8–19.6% of unique consensus variants received no reads. This proportion was highest for 16S (19.6%) and lowest for COI (11.8%). Zero-abundance OTUs likely result from alignment filtering and competition among closely related consensus variants, as demonstrated for 16S.</p>
+<p>Overall, the workflow successfully generated read-abundance tables for all three markers while preserving single-nucleotide differences between consensus sequences. However, differences in OTU richness should not be interpreted directly as differences in biological diversity without accounting for marker-specific resolution, amplification biases and sequencing depth.</p>
+</section>
+</section>
+<section id="coi-taxonomic-assignment" class="level2">
+<h2 class="anchored" data-anchor-id="coi-taxonomic-assignment">COI taxonomic assignment</h2>
+<p>Taxonomic assignment of the 3,079 COI OTUs was performed using DADA2 <code>assignTaxonomy()</code> against three reference databases: <strong>eKOI, MZG and MIDORI2</strong>.</p>
+<section id="classification-success" class="level3">
+<h3 class="anchored" data-anchor-id="classification-success">Classification success</h3>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Database</th>
+<th style="text-align: right;">Classified OTUs</th>
+<th style="text-align: right;">OTUs (%)</th>
+<th style="text-align: right;">Reads (%)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">eKOI</td>
+<td style="text-align: right;">399</td>
+<td style="text-align: right;">13.0</td>
+<td style="text-align: right;">22.0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">MZG</td>
+<td style="text-align: right;">333</td>
+<td style="text-align: right;">10.8</td>
+<td style="text-align: right;">16.8</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">MIDORI2</td>
+<td style="text-align: right;">116</td>
+<td style="text-align: right;">3.8</td>
+<td style="text-align: right;">4.7</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>Combined</strong></td>
+<td style="text-align: right;"><strong>542</strong></td>
+<td style="text-align: right;"><strong>17.6</strong></td>
+<td style="text-align: right;">—</td>
+</tr>
+</tbody>
+</table>
+<p>eKOI provided the highest genus-level classification coverage. MZG contributed 131 additional OTUs not classified by eKOI, while MIDORI2 contributed only 12 OTUs not classified by either database. Combining all three databases increased the number of genus-classified OTUs to 542 (17.6%), leaving 2,537 OTUs (82.4%) unclassified.</p>
+</section>
+<section id="classification-overlap" class="level3">
+<h3 class="anchored" data-anchor-id="classification-overlap">Classification overlap</h3>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-coi-venn" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-coi-venn-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="ont_short_files/figure-html/fig-coi-venn-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-coi-venn-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Overlap of genus-level COI taxonomic assignments across eKOI, MZG and MIDORI2.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The three databases showed partial complementarity, but their assignments were not always consistent.</p>
+</section>
+<section id="agreement-between-databases" class="level3">
+<h3 class="anchored" data-anchor-id="agreement-between-databases">Agreement between databases</h3>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Comparison</th>
+<th style="text-align: right;">Shared OTUs</th>
+<th style="text-align: right;">Matching genera</th>
+<th style="text-align: right;">Agreement (%)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">eKOI vs MZG</td>
+<td style="text-align: right;">202</td>
+<td style="text-align: right;">123</td>
+<td style="text-align: right;">60.9</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">eKOI vs MIDORI2</td>
+<td style="text-align: right;">73</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">16.4</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">MZG vs MIDORI2</td>
+<td style="text-align: right;">74</td>
+<td style="text-align: right;">22</td>
+<td style="text-align: right;">29.7</td>
+</tr>
+</tbody>
+</table>
+<p>Agreement was highest between eKOI and MZG (60.9%). MIDORI2 showed substantially lower agreement, including implausible metazoan assignments for sequences classified as marine protists by the other databases.</p>
+</section>
+<section id="vertebrate-assignments" class="level3">
+<h3 class="anchored" data-anchor-id="vertebrate-assignments">Vertebrate assignments</h3>
+<p>Three OTUs (215 reads; 0.0024% of all COI reads) were classified as vertebrates. eKOI identified two closely related OTUs as <em>Homo sapiens</em> (200 reads) and one as <em>Ovis aries</em> (15 reads). These identifications were supported by independent BLASTn searches, including a 100% identity match across the full amplicon for <em>O. aries</em>. In contrast, MZG assigned these sequences to fish taxa, with low genus-level bootstrap support.</p>
+<p>These mammalian sequences may represent low-level contamination, although their occurrence across samples and negative controls should be examined before drawing conclusions.</p>
+</section>
+<section id="conclusion" class="level3">
+<h3 class="anchored" data-anchor-id="conclusion">Conclusion</h3>
+<p><strong>eKOI and MZG provided the most useful and complementary COI classifications</strong>, increasing genus-level coverage from 399 to 530 OTUs when combined. MIDORI2 contributed limited additional coverage and showed substantial taxonomic disagreement. Overall, the low genus-level classification success highlights limitations in available COI reference databases and the importance of independent validation of uncertain taxonomic assignments.</p>
+</section>
+<section id="a-useful-comparison-with-the-illumina-dataset" class="level3">
+<h3 class="anchored" data-anchor-id="a-useful-comparison-with-the-illumina-dataset">A useful comparison with the Illumina dataset</h3>
+<p>Since I used the same SILVA reference and DADA2 taxonomy functions for my Illumina 16S data, I could compare the two sequencing technologies using: - Percentage of OTUs/ASVs classified at each rank. - Percentage of sequencing reads classified at each rank. - Genus-level bootstrap confidence distributions.</p>
 
 
+</section>
+</section>
 </section>
 
 </main> <!-- /main -->

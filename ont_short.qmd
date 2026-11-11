@@ -268,6 +268,18 @@ The resulting database is expected to contain **2,948,559 sequences (91.8% of th
 
 The impact on taxonomic assignment accuracy and computational performance remains to be evaluated.
 
+### Evaluation of MIDORI2 for COI taxonomic assignment
+
+The MIDORI2 COI database was processed to retain the target amplicon region while maximising reference coverage, resulting in **2.95 million sequences (100–330 bp)**, representing 91.8% of the original database.
+
+Taxonomic assignment using DADA2's `assignTaxonomy()` performed unexpectedly poorly. Of 3,079 COI OTUs, 2,622 were assigned to Arthropoda, with no assignments beyond class level. Many assignments were clearly incorrect, including algal, cnidarian and vertebrate OTUs classified as Arthropoda with high bootstrap confidence.
+
+To investigate this, six representative OTUs were analysed using VSEARCH. All had biologically consistent best matches in MIDORI2 (84.7–100% identity), including exact matches for *Phaeocystis globosa* and *Arachnanthus sarsi*. When DADA2 was retrained using a small reference subset containing these matches, all six OTUs were correctly classified at phylum level with 92–100% bootstrap confidence.
+
+These results demonstrate that **MIDORI2 contains suitable reference sequences, but DADA2 performs unreliably with the complete training database**. Reference redundancy, taxonomic representation and heterogeneous reference lengths may contribute, although the precise cause remains unresolved.
+
+We therefore decided to adopt **VSEARCH-based taxonomic assignment**, which provides explicit nucleotide identity, alignment coverage and access to competing reference matches. This approach allows more transparent assessment of taxonomic confidence and ambiguity, particularly for high-quality nanopore consensus sequences.
+
 
 ### A useful comparison with the Illumina dataset
 

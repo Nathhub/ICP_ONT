@@ -134,6 +134,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#agreement-between-databases" id="toc-agreement-between-databases" class="nav-link" data-scroll-target="#agreement-between-databases">Agreement between databases</a></li>
   <li><a href="#vertebrate-assignments" id="toc-vertebrate-assignments" class="nav-link" data-scroll-target="#vertebrate-assignments">Vertebrate assignments</a></li>
   <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  <li><a href="#optimisation-of-the-midori2-coi-reference-database" id="toc-optimisation-of-the-midori2-coi-reference-database" class="nav-link" data-scroll-target="#optimisation-of-the-midori2-coi-reference-database">Optimisation of the MIDORI2 COI reference database</a></li>
+  <li><a href="#evaluation-of-midori2-for-coi-taxonomic-assignment" id="toc-evaluation-of-midori2-for-coi-taxonomic-assignment" class="nav-link" data-scroll-target="#evaluation-of-midori2-for-coi-taxonomic-assignment">Evaluation of MIDORI2 for COI taxonomic assignment</a></li>
   <li><a href="#a-useful-comparison-with-the-illumina-dataset" id="toc-a-useful-comparison-with-the-illumina-dataset" class="nav-link" data-scroll-target="#a-useful-comparison-with-the-illumina-dataset">A useful comparison with the Illumina dataset</a></li>
   </ul></li>
   </ul></li>
@@ -550,6 +552,28 @@ Figure&nbsp;1: Overlap of genus-level COI taxonomic assignments across eKOI, MZG
 <section id="conclusion" class="level3">
 <h3 class="anchored" data-anchor-id="conclusion">Conclusion</h3>
 <p><strong>eKOI and MZG provided the most useful and complementary COI classifications</strong>, increasing genus-level coverage from 399 to 530 OTUs when combined. MIDORI2 contributed limited additional coverage and showed substantial taxonomic disagreement. Overall, the low genus-level classification success highlights limitations in available COI reference databases and the importance of independent validation of uncertain taxonomic assignments.</p>
+</section>
+<section id="optimisation-of-the-midori2-coi-reference-database" class="level3">
+<h3 class="anchored" data-anchor-id="optimisation-of-the-midori2-coi-reference-database">Optimisation of the MIDORI2 COI reference database</h3>
+<p>The MIDORI2 UNIQ COI reference database (3,213,682 sequences) was processed to extract the region targeted by the mlCOIintF/jgHCO2198 primers for taxonomic assignment of nanopore metabarcoding data.</p>
+<p>An initial Cutadapt approach requiring detection of both primers retained only <strong>258,463 sequences (8.0%)</strong>, substantially reducing reference coverage. Further investigation showed that many references contained the forward-primer region but lacked a detectable reverse-primer binding site, probably because sequences had been truncated during their original preparation.</p>
+<p>The extraction strategy was therefore revised:</p>
+<ul>
+<li><strong>Forward-primer trimming:</strong> Cutadapt (<code>-e 0.25</code>, minimum overlap 24 bp, no indels) retained 2,960,095 sequences (92.1%).</li>
+<li><strong>Reverse-primer trimming:</strong> The reverse-complemented jgHCO2198 primer was removed when detected (<code>-e 0.30</code>, minimum overlap 20 bp, no indels), while unmatched references were retained. Primer-match positions were examined to identify appropriate matching parameters.</li>
+<li><strong>Length optimisation:</strong> Sequences exceeding 330 bp were truncated, preserving natural length variation among shorter references.</li>
+<li><strong>Minimum-length filtering:</strong> References shorter than 100 bp were excluded to remove fragments with limited taxonomic information.</li>
+</ul>
+<p>The resulting database is expected to contain <strong>2,948,559 sequences (91.8% of the original)</strong>, approximately <strong>11.4 times more references</strong> than the initial two-primer extraction. This strategy substantially improves potential taxonomic coverage while restricting reference sequences to the targeted COI region.</p>
+<p>The impact on taxonomic assignment accuracy and computational performance remains to be evaluated.</p>
+</section>
+<section id="evaluation-of-midori2-for-coi-taxonomic-assignment" class="level3">
+<h3 class="anchored" data-anchor-id="evaluation-of-midori2-for-coi-taxonomic-assignment">Evaluation of MIDORI2 for COI taxonomic assignment</h3>
+<p>The MIDORI2 COI database was processed to retain the target amplicon region while maximising reference coverage, resulting in <strong>2.95 million sequences (100–330 bp)</strong>, representing 91.8% of the original database.</p>
+<p>Taxonomic assignment using DADA2’s <code>assignTaxonomy()</code> performed unexpectedly poorly. Of 3,079 COI OTUs, 2,622 were assigned to Arthropoda, with no assignments beyond class level. Many assignments were clearly incorrect, including algal, cnidarian and vertebrate OTUs classified as Arthropoda with high bootstrap confidence.</p>
+<p>To investigate this, six representative OTUs were analysed using VSEARCH. All had biologically consistent best matches in MIDORI2 (84.7–100% identity), including exact matches for <em>Phaeocystis globosa</em> and <em>Arachnanthus sarsi</em>. When DADA2 was retrained using a small reference subset containing these matches, all six OTUs were correctly classified at phylum level with 92–100% bootstrap confidence.</p>
+<p>These results demonstrate that <strong>MIDORI2 contains suitable reference sequences, but DADA2 performs unreliably with the complete training database</strong>. Reference redundancy, taxonomic representation and heterogeneous reference lengths may contribute, although the precise cause remains unresolved.</p>
+<p>We therefore decided to adopt <strong>VSEARCH-based taxonomic assignment</strong>, which provides explicit nucleotide identity, alignment coverage and access to competing reference matches. This approach allows more transparent assessment of taxonomic confidence and ambiguity, particularly for high-quality nanopore consensus sequences.</p>
 </section>
 <section id="a-useful-comparison-with-the-illumina-dataset" class="level3">
 <h3 class="anchored" data-anchor-id="a-useful-comparison-with-the-illumina-dataset">A useful comparison with the Illumina dataset</h3>
